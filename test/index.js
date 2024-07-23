@@ -6,11 +6,8 @@
 
 const _ = require('lodash');
 
-const aws = require('aws-sdk');
-const awsMock = require('aws-sdk-mock');
-
-// allow aws overriding
-awsMock.setSDKInstance(aws);
+const { mockClient } = require("aws-sdk-client-mock");
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda');
 
 const test = require('tape');
 const sinon = require('sinon');
@@ -57,19 +54,6 @@ const script = {
   }]
 };
 
-function setup() {
-  awsMock.mock('Lambda', 'invoke', function(params, cb) {
-    return cb(null, {
-      StatusCode: 200,
-      Payload: '{ "result": "OK" }',
-    });
-  });
-}
-
-function teardown() {
-  awsMock.restore('Lambda');
-}
-
 test('Engine interface', function (t) {
   const events = new EventEmitter();
   const engine = new LambdaEngine(script, events, {});
@@ -95,9 +79,12 @@ test('Lambda engine template functions', function (t) {
 });
 
 test('Scenario before/after hooks are called', function (t) {
+  const lbMock = mockClient(LambdaClient)
 
-  // setup mocks
-  setup();
+  lbMock.on(InvokeCommand).resolves({
+    StatusCode: 200,
+    Payload: '{ "result": "OK" }',
+  })
 
   function beforeRequest(r, c, e, done) {
     return done();
@@ -126,12 +113,8 @@ test('Scenario before/after hooks are called', function (t) {
   };
   const runScenario = engine.createScenario(script.scenarios[0], events);
   runScenario(context, function() {
-    t.end();
-
     t.equal(beforeRequestSpy.callCount, 4);
     t.equal(afterRequestSpy.callCount, 4);
-
-    // tear down mocks
-    teardown();
+    t.end();
   });
 });

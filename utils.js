@@ -1,7 +1,7 @@
 const A = require('async');
 const _ = require('lodash');
 
-const helpers = require('artillery/core/lib/engine_util');
+const helpers = require('@artilleryio/int-commons/engine_util');
 
 function doNothing() { 
   const cb = arguments[arguments.length - 1];
